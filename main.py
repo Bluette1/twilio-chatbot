@@ -22,8 +22,7 @@ def whatsapp_webhook(request):
 
     twilio_response = MessagingResponse()
     msg = twilio_response.message()
-    request_json = request.get_json(silent=True)
-    country = request_json['Body'].lower()
+    country = request.values.get('Body', '').lower()
 
     resp = requests.get(f'https://restcountries.eu/rest/v2/name/{country}?fullText=true')
     if not (200 <= resp.status_code <= 299):
