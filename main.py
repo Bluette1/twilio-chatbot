@@ -1,3 +1,9 @@
+import logging
+import requests
+from twilio.twiml.messaging_response import MessagingResponse
+
+logger = logging.getLogger(__name__)
+
 def whatsapp_webhook(request):
     """HTTP Cloud Function.
     Parameters
@@ -12,20 +18,32 @@ def whatsapp_webhook(request):
         <https://flask.palletsprojects.com/en/1.1.x/api/#flask.make_response>.
 
     """
-    country = request.values.get('Body', "").lower()
-    resp = request.get(f'https://restcountries.eu/rest/v2/name/{country}?fullText=true')
+    # from twilio.twiml.messaging_response import MessagingResponse
 
+    twilio_response = MessagingResponse()
+    msg = twilio_response.message()
+    request_json = request.get_json(silent=True)
+    country = request_json['Body'].lower()
+
+    resp = requests.get(f'https://restcountries.eu/rest/v2/name/{country}?fullText=true')
     if not (200 <= resp.status_code <= 299):
-        return 'Sorry we could not process your request. Please try again or check a different country'
+        logger.error(
+            f'Failed to retrieve data for the following country - {country.title()}. Here is a more verbose reason {resp.reason}'
+        )
+        msg.body(
+            'Sorry we could not process your request. Please try again or check a different country'
+        )
     # Extract the single dict in the response using the index 0
-    data = resp.json()[0]
+    
+    else:
+      data = resp.json()[0]
 
     # Extract values needed by the bot
-    native_name = data['nativeName']
-    capital = data['capital']
-    people = data['demonym']
-    region = data['region']
-    # Note the use of str.title() to improve readability of final response
-    response = f"{country.title()} is a country in {region}. It's capital city is {capital}, while it's native name is {native_name}. A person from {country.title()} is called a {people}."
+      native_name = data['nativeName']
+      capital = data['capital']
+      people = data['demonym']
+      region = data['region']
+      # Note the use of str.title() to improve readability of final response
+      msg.body(f"{country.title()} is a country in {region}. It's capital city is {capital}, while it's native name is {native_name}. A person from {country.title()} is called a {people}.")
 
-    return response
+    return str(twilio_response)
